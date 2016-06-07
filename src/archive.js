@@ -48,6 +48,7 @@ exports = module.exports = {
     });
 
     log.debug('Executing command on GHE:', cmd);
+    // Connect to GHE via SSH and run a redis query to find info about deleted repos
     ssh.exec(cmd, {
       exit: function(code, stdout, stderr) {
         var columns = ['id', 'owner', 'name', 'name_with_owner', 'shard_path', 'has_wiki'];
@@ -62,7 +63,7 @@ exports = module.exports = {
         });
       },
       err: function(stderr) {
-        // this error happens on the Github instance we connect too
+        // this error happens on the GHE instance we connect too
         log.error('Error while querying Redis on GHE for deleted repositories', stderr);
         deferred.reject(stderr);
       }
@@ -173,7 +174,8 @@ exports = module.exports = {
           // break the list of repos into small bacthes. Process one batch at the time
           // to prevent over usage of system resources
           var batches = _.chunk(repos, config.get('batch-size'));
-          log.debug('Divided', repos.length, 'repositories into', batches.length, 'batches of', config.get('batch-size'), 'repos each');
+          log.debug('Divided', repos.length, 'repositories into', batches.length, 'batches of',
+            config.get('batch-size'), 'repos each');
 
           // loop over the list batches
           async.each(batches, exports.repoBatch, function(err) {
