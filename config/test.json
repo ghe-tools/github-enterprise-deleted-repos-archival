@@ -6,5 +6,10 @@
   "email": {
     "sender": "github@your-company-name.com",
     "recipients": ["github-ops@your-company-name.com"]
+  },
+  "log": {
+    "dir": "logs",
+    "level": "trace",
+    "retention": 10
   }
 }
