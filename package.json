@@ -1,0 +1,51 @@
+{
+  "name": "github-enterprise-archive-deleted-repos",
+  "version": "1.0.0",
+  "description": "This tool keeps user deleted repos into long term archival",
+  "author": "Quoc Vu",
+  "license": "Apache-2.0",
+  "scripts": {
+    "archive": "node src/archive.js",
+    "cover": "NODE_ENV=test istanbul cover _mocha",
+    "coveralls": "npm run cover -- --report lcovonly && cat ./coverage/lcov.info | coveralls",
+    "test": "NODE_ENV=test mocha"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git@github.intuit.com:github-tools/archive-deleted-repos.git"
+  },
+  "keywords": [
+    "github",
+    "enterprise",
+    "deleted repo",
+    "backup",
+    "archive"
+  ],
+  "dependencies": {
+    "async": "^2.0.0-rc.3",
+    "bunyan": "^1.4.0",
+    "colors": "^1.1.2",
+    "commander": "^2.8.1",
+    "config": "^1.14.0",
+    "csv": "^0.4.5",
+    "dirsum": "^0.1.1",
+    "email": "^0.2.6",
+    "lodash": "^3.10.0",
+    "md5": "^2.1.0",
+    "nodemailer": "^2.3.2",
+    "q": "^1.4.1",
+    "simple-ssh": "^0.8.6",
+    "tar-fs": "^1.12.0"
+  },
+  "devDependencies": {
+    "coveralls": "^2.11.9",
+    "istanbul": "^0.4.2",
+    "mocha": "^2.3.2",
+    "mocha-lcov-reporter": "^1.2.0",
+    "should": "^7.1.0",
+    "sinon": "^1.16.1"
+  },
+  "engines": {
+    "node": "4.2"
+  }
+}

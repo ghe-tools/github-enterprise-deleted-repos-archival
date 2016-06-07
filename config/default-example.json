@@ -1,0 +1,27 @@
+{
+  "dir": {
+    "snapshots": "/var/data/ghe/snapshots/current",
+    "archive": "/var/data/ghe/repo-archive"
+  },
+  "github": {
+    "host": "github.mycompany.net",
+    "port": 122,
+    "timeout": 60,
+    "username": "admin",
+    "search-query-all": "sudo github-env bin/runner -e production \"'Archived::Repository.find_each {|r| puts \\\"#{r.id},#{r.owner},#{r.name},#{r.name_with_owner},#{r.shard_path},#{r.has_wiki}\\\" }'\"",
+    "search-query-recent": "sudo github-env bin/runner -e production \"'Archived::Repository.where({ updated_at: (Time.now-2.days)..Time.now }).each {|r| puts \\\"#{r.id},#{r.owner},#{r.name},#{r.name_with_owner},#{r.shard_path},#{r.has_wiki}\\\" }'\""
+  },
+  "ssh-private-key": {
+    "file": "/home/gheuser/.ssh/id_rsa",
+    "pass-phrase": "something-hard-to-guess"
+  },
+  "log": {
+    "dir": "/var/log/github-tools",
+    "level": "trace",
+    "retention": 10
+  },
+  "email": {
+    "sender": "github@your-company-name.com",
+    "recipients": ["github-ops@your-company-name.com"]
+  }
+}
