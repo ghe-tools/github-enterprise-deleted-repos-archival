@@ -1,39 +1,31 @@
 'use strict';
 
-var fs = require('fs');
 var os = require('os');
 var PassThrough = require('stream').PassThrough;
 
-var config = require('config');
-var nodemailer = require('nodemailer');
-var Q = require('q');
+var rewire = require('rewire');
 var sinon = require('sinon');
 var should = require('should');
-var SSH = require('simple-ssh');
-var tar = require('tar-fs');
 
-var helper = require('../src/helper');
+var archive = rewire('../src/archive')
 
 describe('archive', function() {
-  var archive;
   var sandbox;
   var error = 'Oops! An Error';
-  var log = {
-    trace: sinon.spy(),
-    debug: sinon.spy(),
-    info: sinon.spy(),
-    warn: sinon.spy(),
-    error: sinon.spy(),
-    fatal: sinon.spy()
-  };
 
   before(function() {
-    sinon.stub(helper, 'logger').returns(log);
-    archive = require('../src/archive');
+    var log = {
+      trace: sinon.spy(),
+      debug: sinon.spy(),
+      info: sinon.spy(),
+      warn: sinon.spy(),
+      error: sinon.spy(),
+      fatal: sinon.spy()
+    };
+    archive.__set__('log', log);
   });
 
   after(function() {
-    helper.logger.restore();
   });
 
   beforeEach(function () {
@@ -45,53 +37,58 @@ describe('archive', function() {
   });
 
   describe('tarball()', function() {
-    it('should create folder', function() {
+    it('should create folder', function(done) {
       var realpath = 'the-real-path';
-
-      sandbox.stub(fs, 'existsSync').returns(false);
-      sandbox.stub(fs, 'mkdirSync');
-      sandbox.spy(fs, 'createWriteStream');
-      sandbox.stub(fs, 'realpath').yields(null, realpath);
-      sandbox.stub(tar, 'pack').returns({ pipe: sinon.stub() });
-
-      archive.tarball('the-symlink', os.tmpdir() + '/tarball.tar');
-
-      fs.createWriteStream.calledOnce.should.be.true();
-      fs.mkdirSync.calledOnce.should.be.true();
-      tar.pack.calledWith(realpath).should.be.true();
-    });
-
-    it('should follow symlink', function() {
-      var realpath = 'the-real-path';
-
-      sandbox.stub(fs, 'existsSync').returns(true);
-      sandbox.spy(fs, 'createWriteStream');
-      sandbox.stub(fs, 'realpath').yields(null, realpath);
-      sandbox.stub(tar, 'pack').returns({ pipe: sinon.stub() });
-
-      archive.tarball('the-symlink', os.tmpdir() + '/tarball.tar');
-
-      fs.createWriteStream.calledOnce.should.be.true();
-      tar.pack.calledWith(realpath).should.be.true();
-    });
-
-    it('should tar snapshot', function(done) {
-      this.timeout(5000);
-
       var ws = new PassThrough();
-      var realpath = 'the-real-path';
-      var callback = function(err, res) {
+      var fs = {
+        existsSync: sandbox.stub().returns(false),
+        mkdirSync: sandbox.stub(),
+        createWriteStream: sandbox.stub().returns(ws),
+        realpath: sandbox.stub().yields(null, realpath)
+      };
+      var tar = {
+        pack: sandbox.stub().returns({ pipe: sinon.stub() })
+      };
+
+      var callback = function (err, res) {
         should.not.exist(err);
-        helper.alert.callCount.should.be.equal(0);
+        fs.createWriteStream.calledOnce.should.be.true();
+        fs.mkdirSync.calledOnce.should.be.true();
+        tar.pack.calledWith(realpath).should.be.true();
         done();
       };
 
-      sandbox.stub(fs, 'existsSync').returns(true);
-      sandbox.stub(fs, 'createWriteStream').returns(ws);
-      sandbox.stub(fs, 'realpath').yields(null, realpath);
-      sandbox.stub(helper, 'alert');
+      archive.__set__('fs', fs);
+      archive.__set__('tar', tar);
 
-      archive.tarball('test', '/archives/GitHub-2015-09-16-Wed.tar', callback);
+      var tarball = archive.__get__('tarball');
+      tarball('the-symlink', os.tmpdir() + '/tarball.tar', callback);
+      ws.emit('finish');
+    });
+
+    it('should follow symlink and tar snapshot', function(done) {
+      var realpath = 'the-real-path';
+      var ws = new PassThrough();
+      var fs = {
+        existsSync: sandbox.stub().returns(true),
+        createWriteStream: sandbox.stub().returns(ws),
+        realpath: sandbox.stub().yields(null, realpath)
+      };
+      var tar = {
+        pack: sandbox.stub().returns({ pipe: sinon.stub() })
+      };
+
+      var callback = function (err, res) {
+        should.not.exist(err);
+        fs.createWriteStream.calledOnce.should.be.true();
+        tar.pack.calledWith(realpath).should.be.true();
+        done();
+      };
+      archive.__set__('fs', fs);
+      archive.__set__('tar', tar);
+
+      var tarball = archive.__get__('tarball');
+      tarball('the-symlink', os.tmpdir() + '/tarball.tar', callback);
       ws.emit('finish');
     });
 
@@ -99,54 +96,74 @@ describe('archive', function() {
       this.timeout(5000);
 
       var ws = new PassThrough();
+      var fs = {
+        existsSync: sandbox.stub().returns(true),
+        createWriteStream: sandbox.stub().returns(ws),
+        realpath: sandbox.stub().yields(error)
+      };
+      var tar = {
+        pack: sandbox.spy()
+      };
       var callback = function(err, res) {
         should.not.exist(err);
         should.not.exist(res);
+        tar.pack.callCount.should.be.equal(0);
         done();
       };
 
-      sandbox.stub(fs, 'existsSync').returns(true);
-      sandbox.stub(fs, 'realpath').yields(error);
-      sandbox.stub(fs, 'createWriteStream').returns(ws);
-      sandbox.stub(helper, 'alert');
+      archive.__set__('fs', fs);
+      archive.__set__('tar', tar);
 
-      archive.tarball('test', '/archives/GitHub-2015-09-16-Wed.tar', callback);
+      var tarball = archive.__get__('tarball');
+      tarball('test', '/archives/GitHub-2015-09-16-Wed.tar', callback);
     });
 
     it('should send an alert on failure', function(done) {
       this.timeout(5000);
 
       var ws = new PassThrough();
-      var tarball = '/archives/GitHub-2015-09-16-Wed.tar';
+      var tarfile = '/archives/GitHub-2015-09-16-Wed.tar';
+      var fs = {
+        existsSync: sandbox.stub().returns(true),
+        createWriteStream: sandbox.stub().returns(ws),
+        realpath: sandbox.stub().yields()
+      };
+      var helper = {
+        alert: sandbox.stub().yields()
+      };
+      var tar = {
+        pack: sandbox.stub().returns({ pipe: sinon.stub() })
+      };
       var callback = function(err, res) {
         should.not.exist(res);
         err.should.be.equal(error);
         helper.alert.calledOnce.should.be.true();
         helper.alert.calledWith(['github-ops@your-company-name.com'],
-          'github@your-company-name.com', error, log).should.be.true();
+          'github@your-company-name.com', error).should.be.true();
         done();
       };
 
-      sandbox.stub(fs, 'existsSync').returns(true);
-      sandbox.stub(fs, 'realpath').yields();
-      sandbox.stub(fs, 'createWriteStream').returns(ws);
-      sandbox.stub(helper, 'alert').yields();
+      archive.__set__('fs', fs);
+      archive.__set__('helper', helper);
+      archive.__set__('tar', tar);
 
-      archive.tarball('test', tarball, callback);
+      var tarball = archive.__get__('tarball');
+      tarball('test', tarfile, callback);
       ws.emit('error', error);
     });
   });
 
   describe('archive', function() {
     it('should fail while archiving repo', function(done) {
-      var tarball = sandbox.stub(archive, 'tarball');
-      tarball.onFirstCall().yields(error);
-
       var repo = {
         id: 123,
         owner: 'jdoe',
         name: 'my-new-repo',
         shard_path: 'repositories/5/nw/5b/5a',
+      };
+      var tarball = sandbox.stub().onFirstCall().yields(error);
+      var helper = {
+        paths: sandbox.stub().returns()
       };
 
       var callback = function(err, res) {
@@ -156,7 +173,11 @@ describe('archive', function() {
         done();
       };
 
-      archive.archive(repo, callback);
+      archive.__set__('helper', helper);
+      archive.__set__('tarball', tarball);
+
+      var a = archive.__get__('archive');
+      a(repo, callback);
     });
 
     it('should fail while archiving wiki', function(done) {
