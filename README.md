@@ -1,5 +1,5 @@
-[![Build Status](https://travis-ci.org/ghe-tools/github-enterprise-deleted-repos-archival.svg?branch=master)](http://img.shields.io/travis/ghe-tools/github-enterprise-deleted-repos-archival.svg)
-[![Coverage Status](https://coveralls.io/repos/github/ghe-tools/github-enterprise-deleted-repos-archival/badge.svg?branch=master)](https://img.shields.io/coveralls/ghe-tools/github-enterprise-deleted-repos-archival.svg)
+[![Build Status](http://img.shields.io/travis/ghe-tools/github-enterprise-deleted-repos-archival.svg)](https://travis-ci.org/ghe-tools/github-enterprise-deleted-repos-archival)
+[![Coverage Status](https://img.shields.io/coveralls/ghe-tools/github-enterprise-deleted-repos-archival.svg)](https://coveralls.io/github/ghe-tools/github-enterprise-deleted-repos-archival)
 
 
 # github-enterprise-deleted-repos-archival
